@@ -183,3 +183,62 @@ float mul_float(float a, float b) {
 	rf = (rf >> (FRACTION_BITS - 2)) | ((rf & ((1 << (FRACTION_BITS - 2)) - 1)) != 0);
 	return finalize_float(((au ^ bu) & SIGN_MASK) != 0, re, rf);
 }
+
+float div_float(float a, float b) {
+	unsigned int au = float2uint(a), bu = float2uint(b);
+	int ae = (au >> FRACTION_BITS) & EXPONENT_MASK, be = (bu >> FRACTION_BITS) & EXPONENT_MASK;
+	unsigned long long af = au & FRACTION_MASK, bf = bu & FRACTION_MASK;
+	int re, rf;
+	unsigned int left, delta;
+	/* nan */
+	if (is_nan(au) || is_nan(bu)) return uint2float(NAN_VALUE);
+	/* 0 */
+	if (is_zero(bu)) {
+		if (is_zero(au)) {
+			/* 0 / 0 */
+			return uint2float(NAN_VALUE);
+		} else {
+			return uint2float(((au ^ bu) & SIGN_MASK) | INF_VALUE);
+		}
+	}
+	if (is_zero(au)) {
+		return uint2float((au ^ bu) & SIGN_MASK);
+	}
+	/* inf */
+	if (is_inf(au)) {
+		if (is_inf(bu)) {
+			/* inf / inf */
+			return uint2float(NAN_VALUE);
+		} else {
+			return uint2float(((au ^ bu) & SIGN_MASK) | INF_VALUE);
+		}
+	}
+	if (is_inf(bu)) {
+		return uint2float((au ^ bu) & SIGN_MASK);
+	}
+
+	if (ae != 0) af |= 1 << FRACTION_BITS; else af <<= 1;
+	if (be != 0) bf |= 1 << FRACTION_BITS; else bf <<= 1;
+	re = ae - be + EXPONENT_BIAS;
+	rf = 0;
+	left = af;
+	delta = 1 << (FRACTION_BITS + 2);
+	while (!(bf & ~FRACTION_MASK)) {
+		bf <<= 1;
+		re++;
+	}
+	while (left < bf) {
+		left <<= 1;
+		re--;
+	}
+	while (left > 0 && delta > 0) {
+		if (left >= bf) {
+			rf |= delta;
+			left -= bf;
+		}
+		left <<= 1;
+		delta >>= 1;
+	}
+	if (left > 0) rf |= 1;
+	return finalize_float(((au ^ bu) & SIGN_MASK) != 0, re, rf);
+}

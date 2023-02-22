@@ -31,8 +31,8 @@ int read_float(float* out, const char* str) {
 }
 
 int main(void) {
-	int add_cnt = 0, sub_cnt = 0, mul_cnt = 0;
-	int add_fail = 0, sub_fail = 0, mul_fail = 0;
+	int add_cnt = 0, sub_cnt = 0, mul_cnt = 0, div_cnt = 0;
+	int add_fail = 0, sub_fail = 0, mul_fail = 0, div_fail = 0;
 	char buf[1024], buf_bak[1024];
 	while (fgets(buf, sizeof(buf), stdin) != NULL) {
 		float params[16], res;
@@ -84,10 +84,24 @@ int main(void) {
 				printf("failed: expected 0x%08x actual 0x%08x\t%s\n", expected, actual, buf_bak);
 				mul_fail++;
 			}
+		} else if (strcmp(name, "b32/") == 0) {
+			if (param_count != 3) {
+				printf("invalid\t%s\n", buf_bak);
+				continue;
+			}
+			div_cnt++;
+			res = div_float(params[0], params[1]);
+			expected = float2uint(params[2]);
+			actual = float2uint(res);
+			if (expected != actual) {
+				printf("failed: expected 0x%08x actual 0x%08x\t%s\n", expected, actual, buf_bak);
+				div_fail++;
+			}
 		}
 	}
 	printf("add: %d tested, %d failed\n", add_cnt, add_fail);
 	printf("sub: %d tested, %d failed\n", sub_cnt, sub_fail);
 	printf("mul: %d tested, %d failed\n", mul_cnt, mul_fail);
+	printf("div: %d tested, %d failed\n", div_cnt, div_fail);
 	return 0;
 }
