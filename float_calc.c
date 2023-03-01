@@ -8,9 +8,6 @@
 #define SIGN_MASK (UINT32_C(1) << (EXPONENT_BITS + FRACTION_BITS))
 #define EXPONENT_BIAS 127
 
-#define FRACTION_MASK_2X ((UINT64_C(1) << (FRACTION_BITS * 2)) - 1)
-#define FRACTION_MASK_2X1 ((UINT64_C(1) << (FRACTION_BITS * 2 + 1)) - 1)
-#define FRACTION_MASK_1 ((UINT32_C(1) << (FRACTION_BITS + 1)) - 1)
 #define FRACTION_MASK_2 ((UINT32_C(1) << (FRACTION_BITS + 2)) - 1)
 #define FRACTION_MASK_3 ((UINT32_C(1) << (FRACTION_BITS + 3)) - 1)
 #define FRACTION_MASK_4 ((UINT32_C(1) << (FRACTION_BITS + 4)) - 1)
@@ -127,9 +124,10 @@ uint32_t sub_float(uint32_t a, uint32_t b) {
 
 uint32_t mul_float(uint32_t a, uint32_t b) {
 	int ae = (a >> FRACTION_BITS) & EXPONENT_MASK, be = (b >> FRACTION_BITS) & EXPONENT_MASK;
-	uint64_t af = a & FRACTION_MASK, bf = b & FRACTION_MASK;
+	uint32_t af = a & FRACTION_MASK, bf = b & FRACTION_MASK;
 	int re;
-	uint64_t rf;
+	uint32_t rf;
+	int i, prev;
 	/* nan */
 	if (is_nan(a) || is_nan(b)) return NAN_VALUE;
 	/* inf */
@@ -151,18 +149,32 @@ uint32_t mul_float(uint32_t a, uint32_t b) {
 	if (ae != 0) af |= UINT32_C(1) << FRACTION_BITS; else af <<= 1;
 	if (be != 0) bf |= UINT32_C(1) << FRACTION_BITS; else bf <<= 1;
 	re = ae + be - EXPONENT_BIAS;
-	rf = af * bf;
-	if (rf & ~FRACTION_MASK_2X1) {
+	while (!(af & ~FRACTION_MASK)) {
+		re--;
+		af <<= 1;
+	}
+	af <<= 3;
+	rf = 0;
+	for (i = prev = 0; i < FRACTION_BITS + 1; i++) {
+		if (bf & 1) {
+			int width = i - prev;
+			rf = (rf >> width) | ((rf & ((UINT32_C(1) << width) - 1)) != 0);
+			rf += af;
+			prev = i;
+		}
+		bf >>= 1;
+	}
+	re -= FRACTION_BITS - prev;
+	if (rf & ~FRACTION_MASK_4) {
 		re++;
 		if (rf & 1) rf |= 2;
 		rf >>= 1;
 	}
-	while (!(rf & ~FRACTION_MASK_2X)) {
+	while (!(rf & ~FRACTION_MASK_3)) {
 		re--;
 		rf <<= 1;
 	}
-	rf = (rf >> (FRACTION_BITS - 2)) | ((rf & ((UINT32_C(1) << (FRACTION_BITS - 2)) - 1)) != 0);
-	return finalize_float(((a ^ b) & SIGN_MASK) != 0, re, rf);
+	return finalize_float(((a ^ b) & SIGN_MASK) != 0, re, (rf >> 1) | (rf & 1));
 }
 
 uint32_t div_float(uint32_t a, uint32_t b) {
