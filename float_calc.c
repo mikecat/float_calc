@@ -3,57 +3,58 @@
 #define FRACTION_BITS 23
 #define EXPONENT_BITS 8
 
-#define FRACTION_MASK ((1u << FRACTION_BITS) - 1u)
-#define EXPONENT_MASK ((1u << EXPONENT_BITS) - 1u)
-#define SIGN_MASK (1u << (EXPONENT_BITS + FRACTION_BITS))
+#define FRACTION_MASK ((UINT32_C(1) << FRACTION_BITS) - 1)
+#define EXPONENT_MASK ((UINT32_C(1) << EXPONENT_BITS) - 1)
+#define SIGN_MASK (UINT32_C(1) << (EXPONENT_BITS + FRACTION_BITS))
 #define EXPONENT_BIAS 127
 
-#define FRACTION_MASK_2X ((1ull << (FRACTION_BITS * 2)) - 1ull)
-#define FRACTION_MASK_2X1 ((1ull << (FRACTION_BITS * 2 + 1)) - 1ull)
-#define FRACTION_MASK_1 ((1u << (FRACTION_BITS + 1)) - 1u)
-#define FRACTION_MASK_2 ((1u << (FRACTION_BITS + 2)) - 1u)
-#define FRACTION_MASK_3 ((1u << (FRACTION_BITS + 3)) - 1u)
-#define FRACTION_MASK_4 ((1u << (FRACTION_BITS + 4)) - 1u)
+#define FRACTION_MASK_2X ((UINT64_C(1) << (FRACTION_BITS * 2)) - 1)
+#define FRACTION_MASK_2X1 ((UINT64_C(1) << (FRACTION_BITS * 2 + 1)) - 1)
+#define FRACTION_MASK_1 ((UINT32_C(1) << (FRACTION_BITS + 1)) - 1)
+#define FRACTION_MASK_2 ((UINT32_C(1) << (FRACTION_BITS + 2)) - 1)
+#define FRACTION_MASK_3 ((UINT32_C(1) << (FRACTION_BITS + 3)) - 1)
+#define FRACTION_MASK_4 ((UINT32_C(1) << (FRACTION_BITS + 4)) - 1)
 
-#define NAN_VALUE ((EXPONENT_MASK << FRACTION_BITS) | (1u << (FRACTION_BITS - 1)))
+#define NAN_VALUE ((EXPONENT_MASK << FRACTION_BITS) | (UINT32_C(1) << (FRACTION_BITS - 1)))
 #define INF_VALUE (EXPONENT_MASK << FRACTION_BITS)
 
-unsigned int float2uint(float a) {
+uint32_t float2uint(float a) {
 	union {
 		float f;
-		unsigned int u;
+		uint32_t u;
 	} u;
 	u.f = a;
 	return u.u;
 }
 
-float uint2float(unsigned int a) {
+float uint2float(uint32_t a) {
 	union {
 		float f;
-		unsigned int u;
+		uint32_t u;
 	} u;
 	u.u = a;
 	return u.f;
 }
 
-int is_nan(unsigned int a) {
-	int ae = (a >> FRACTION_BITS) & EXPONENT_MASK;
-	int af = a & FRACTION_MASK;
+int is_nan(uint32_t a) {
+	uint32_t ae = (a >> FRACTION_BITS) & EXPONENT_MASK;
+	uint32_t af = a & FRACTION_MASK;
 	return ae == EXPONENT_MASK && af != 0;
 }
 
-int is_inf(unsigned int a) {
-	int ae = (a >> FRACTION_BITS) & EXPONENT_MASK;
-	int af = a & FRACTION_MASK;
+int is_inf(uint32_t a) {
+	uint32_t ae = (a >> FRACTION_BITS) & EXPONENT_MASK;
+	uint32_t af = a & FRACTION_MASK;
 	return ae == EXPONENT_MASK && af == 0;
 }
 
-int is_zero(unsigned int a) {
+int is_zero(uint32_t a) {
 	return (a & ~SIGN_MASK) == 0;
 }
 
-float finalize_float(int sign, int exponent, int fraction_s2) {
-	int re = exponent, rf = fraction_s2;
+float finalize_float(int sign, int exponent, uint32_t fraction_s2) {
+	int re = exponent;
+	uint32_t rf = fraction_s2;
 	if (re <= 0) {
 		int shift_width = 1 - re;
 		if (shift_width >= FRACTION_BITS + 3) {
@@ -82,11 +83,11 @@ float finalize_float(int sign, int exponent, int fraction_s2) {
 }
 
 float add_float(float a, float b) {
-	unsigned int au = float2uint(a), bu = float2uint(b);
+	uint32_t au = float2uint(a), bu = float2uint(b);
 	int ae = (au >> FRACTION_BITS) & EXPONENT_MASK, be = (bu >> FRACTION_BITS) & EXPONENT_MASK;
-	int af = au & FRACTION_MASK, bf = bu & FRACTION_MASK;
-	int re, rf;
-	int rs = 0;
+	uint32_t af = au & FRACTION_MASK, bf = bu & FRACTION_MASK;
+	int rs = 0, re;
+	uint32_t rf;
 	/* nan */
 	if (is_nan(au) || is_nan(bu)) return uint2float(NAN_VALUE);
 	/* inf */
@@ -125,7 +126,7 @@ float add_float(float a, float b) {
 	if (au & SIGN_MASK) af = -af;
 	if (bu & SIGN_MASK) bf = -bf;
 	rf = af + bf;
-	if (rf < 0) { rf = -rf; rs = 1; }
+	if (rf & UINT32_C(0x80000000)) { rf = -rf; rs = 1; }
 	if (rf == 0) return uint2float(0);
 	if (rf & ~FRACTION_MASK_4) {
 		re++;
@@ -144,11 +145,11 @@ float sub_float(float a, float b) {
 }
 
 float mul_float(float a, float b) {
-	unsigned int au = float2uint(a), bu = float2uint(b);
+	uint32_t au = float2uint(a), bu = float2uint(b);
 	int ae = (au >> FRACTION_BITS) & EXPONENT_MASK, be = (bu >> FRACTION_BITS) & EXPONENT_MASK;
-	unsigned long long af = au & FRACTION_MASK, bf = bu & FRACTION_MASK;
+	uint64_t af = au & FRACTION_MASK, bf = bu & FRACTION_MASK;
 	int re;
-	unsigned long long rf;
+	uint64_t rf;
 	/* nan */
 	if (is_nan(au) || is_nan(bu)) return uint2float(NAN_VALUE);
 	/* inf */
@@ -185,11 +186,12 @@ float mul_float(float a, float b) {
 }
 
 float div_float(float a, float b) {
-	unsigned int au = float2uint(a), bu = float2uint(b);
+	uint32_t au = float2uint(a), bu = float2uint(b);
 	int ae = (au >> FRACTION_BITS) & EXPONENT_MASK, be = (bu >> FRACTION_BITS) & EXPONENT_MASK;
-	unsigned long long af = au & FRACTION_MASK, bf = bu & FRACTION_MASK;
-	int re, rf;
-	unsigned int left, delta;
+	uint32_t af = au & FRACTION_MASK, bf = bu & FRACTION_MASK;
+	int re;
+	uint32_t rf;
+	uint32_t left, delta;
 	/* nan */
 	if (is_nan(au) || is_nan(bu)) return uint2float(NAN_VALUE);
 	/* 0 */
