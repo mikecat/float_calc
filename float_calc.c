@@ -18,24 +18,6 @@
 #define NAN_VALUE ((EXPONENT_MASK << FRACTION_BITS) | (UINT32_C(1) << (FRACTION_BITS - 1)))
 #define INF_VALUE (EXPONENT_MASK << FRACTION_BITS)
 
-uint32_t float2uint(float a) {
-	union {
-		float f;
-		uint32_t u;
-	} u;
-	u.f = a;
-	return u.u;
-}
-
-float uint2float(uint32_t a) {
-	union {
-		float f;
-		uint32_t u;
-	} u;
-	u.u = a;
-	return u.f;
-}
-
 int is_nan(uint32_t a) {
 	uint32_t ae = (a >> FRACTION_BITS) & EXPONENT_MASK;
 	uint32_t af = a & FRACTION_MASK;
@@ -126,7 +108,7 @@ uint32_t add_float(uint32_t a, uint32_t b) {
 	if (b & SIGN_MASK) bf = -bf;
 	rf = af + bf;
 	if (rf & UINT32_C(0x80000000)) { rf = -rf; rs = 1; }
-	if (rf == 0) return uint2float(0);
+	if (rf == 0) return 0;
 	if (rf & ~FRACTION_MASK_4) {
 		re++;
 		if (rf & 1) rf |= 2;

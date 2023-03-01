@@ -2,6 +2,24 @@
 #include <inttypes.h>
 #include "float_calc.h"
 
+uint32_t float2uint(float a) {
+	union {
+		float f;
+		uint32_t u;
+	} u;
+	u.f = a;
+	return u.u;
+}
+
+float uint2float(uint32_t a) {
+	union {
+		float f;
+		uint32_t u;
+	} u;
+	u.u = a;
+	return u.f;
+}
+
 void test(float a, float b) {
 	uint32_t ai = float2uint(a), bi = float2uint(b);
 	float add1 = a + b, mul1 = a * b;
