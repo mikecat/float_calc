@@ -6,9 +6,9 @@
 uint32_t float2uint(float a);
 float uint2float(uint32_t a);
 
-float add_float(float a, float b);
-float sub_float(float a, float b);
-float mul_float(float a, float b);
-float div_float(float a, float b);
+uint32_t add_float(uint32_t a, uint32_t b);
+uint32_t sub_float(uint32_t a, uint32_t b);
+uint32_t mul_float(uint32_t a, uint32_t b);
+uint32_t div_float(uint32_t a, uint32_t b);
 
 #endif

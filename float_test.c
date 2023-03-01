@@ -1,15 +1,17 @@
 #include <stdio.h>
+#include <inttypes.h>
 #include "float_calc.h"
 
 void test(float a, float b) {
-	float add1 = a + b, add2 = add_float(a, b);
-	float mul1 = a * b, mul2 = mul_float(a, b);
-	unsigned int add1u = float2uint(add1), add2u = float2uint(add2);
-	unsigned int mul1u = float2uint(mul1), mul2u = float2uint(mul2);
+	uint32_t ai = float2uint(a), bi = float2uint(b);
+	float add1 = a + b, mul1 = a * b;
+	uint32_t add2u = add_float(ai, bi), mul2u = mul_float(ai, bi);
+	uint32_t add1u = float2uint(add1), mul1u = float2uint(mul1);
+	float add2 = uint2float(add2u), mul2 = uint2float(mul2u);
 	printf("%-16.8g %-16.8g %-16.8g %-16.8g %-16.8g %-16.8g %-4s %-4s\n",
 		a, b, add1, add2, mul1, mul2, add1u == add2u ? "OK" : "FAIL", mul1u == mul2u ? "OK" : "FAIL");
 	if (add1u != add2u || mul1u != mul2u) {
-		printf("0x%08x       0x%08x       0x%08x       0x%08x       0x%08x       0x%08x\n",
+		printf("0x%08" PRIx32 "       0x%08" PRIx32 "       0x%08" PRIx32 "       0x%08" PRIx32 "       0x%08" PRIx32 "       0x%08" PRIx32 "\n",
 			float2uint(a), float2uint(b), add1u, add2u, mul1u, mul2u);
 	}
 }
